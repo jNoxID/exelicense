@@ -1,9 +1,16 @@
-import argparse, base64, hashlib, json, os, platform, secrets, uuid
+import argparse, base64, hashlib, importlib, json, os, platform, secrets, uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+try:
+    serialization = importlib.import_module('cryptography.hazmat.primitives').serialization
+    Ed25519PrivateKey = importlib.import_module(
+        'cryptography.hazmat.primitives.asymmetric.ed25519'
+    ).Ed25519PrivateKey
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        "Missing dependency: install it with 'python -m pip install cryptography'"
+    ) from exc
 
 ROOT = Path(__file__).resolve().parent
 KEYS = ROOT / 'keys'; LICENSES = ROOT / 'licenses'
@@ -54,7 +61,6 @@ def verify_file(path, public=PUBLIC, expected_app=None):
         if payload.get('device_id') not in ('*',device_id()): return False,'wrong device',payload
         if expected_app and payload.get('application') not in ('*',expected_app): return False,'wrong application',payload
         return True,'valid',payload
-    except InvalidSignature: return False,'invalid signature',None
     except Exception as e: return False,f'invalid license: {e}',None
 
 def cmd_verify(args):
